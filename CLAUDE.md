@@ -31,16 +31,20 @@ pushing.
 ## Architecture
 
 ```
-index.js                          SDK wiring only: handlers registered before connect()
-src/devices/index.js              registry of the device blueprints + dispatch helpers
-src/devices/<type>.js             one device type per file (buildDevice, onPoll, onSetValue...)
+index.js                          SDK wiring only (registerHandlers + shutdown)
+src/app.js                        every SDK handler, waits for the first start
+src/hub.js                        reads the server on its own timer, states, triggers,
+                                  questions (ask), load / unload, "Test the connection"
+src/ollama/client.js              Ollama REST client on fetch, errors with a `kind`
+src/devices.js                    the one device "Ollama" and its feature values
 src/scenes.js                     scene action handlers (manifest `scene_actions`)
 src/widgets.js                    dashboard widget handlers (manifest `widgets`)
+src/texts.js                      texts sent to Gladys, four languages
 src/config.js                     DEFAULT_CONFIG (mirrors the manifest defaults) + normalization
-src/weather.js                    example driver (Open-Meteo)
 gladys-assistant-integration.json manifest: name, config_schema, actions, image...
-docs/en.md, docs/fr.md            user documentation, re-hosted by Gladys (mandatory)
-test/                             node --test, against the SDK's fake Gladys (integration-sdk/testing)
+docs/{en,fr,de,es}.md             user documentation, re-hosted by Gladys (en and fr mandatory)
+test/                             node --test, against the SDK's fake Gladys and a fake Ollama
+test/fixtures/ollama/             answers recorded from a real ollama/ollama 0.40.6
 .github/scripts/release.mjs       release helpers (manifest bump, changelog), tested in test/
 ```
 
@@ -70,8 +74,9 @@ test/                             node --test, against the SDK's fake Gladys (in
   `type: "provider"`: 5.1.0). `test/manifest.test.js` ties the manifest to the
   code (defaults, action, scene and widget handlers): change both sides
   together.
-- **User-facing text** is bilingual (English and French): action messages,
-  manifest texts, and `docs/en.md` / `docs/fr.md`, kept in sync.
+- **User-facing text** exists in English, French, German and Spanish: action
+  messages, widget texts, feature names, manifest texts, and `docs/*.md`, kept
+  in sync (`test/i18n.test.js`).
 - **Style.** Prettier formats, ESLint catches mistakes. Comments explain why,
   in English. Tests never touch the network.
 
@@ -233,3 +238,22 @@ long, et sur un « Sie »/« Ihr… » de politesse en allemand. Le store exige 
 - Docs `en`, `fr`, `de`, `es` avec les mêmes sections.
 - Chauffe, ouverture, sécurité : ne rien rendre pilotable « comme un thermostat » ou par un assistant
   vocal quand une erreur serait dangereuse (leçon d'OctoPrint).
+
+## Ollama (propre à cette intégration)
+
+- API sans authentification (`/api/version`, `/api/tags`, `/api/ps`, `/api/chat`, `/api/generate`) ; la clé
+  facultative n'est qu'un jeton Bearer pour un proxy inverse. Port 11434 ajouté à une adresse tapée sans
+  schéma ; une URL complète (proxy) garde son chemin, `/api` final retiré.
+- Vérifié sur `ollama/ollama` 0.40.6 (19/10/2026) : `think: false` est accepté par un modèle sans
+  raisonnement (`think: true` y répond 400 « does not support thinking ») ; le client redemande sans
+  `think` si le serveur le refuse. Modèle absent : 404 `{"error":"model 'x' not found"}`. Route
+  inconnue : 404 en texte brut. Charger = `POST /api/generate` sans prompt (`done_reason: "load"`),
+  décharger = idem avec `keep_alive: 0` (`"unload"`). `keep_alive` : nombre = secondes, texte = durée.
+- La sortie d'une action de scène est le seul moyen de rendre la réponse à la scène (cœur ≥ 5.1,
+  plafonnée à 10 000 caractères) ; `timeout_seconds` vaut 120 au plus, attente de connexion comprise :
+  l'attente configurable plafonne à 110 s. `num_predict` = moitié de la longueur maximale en caractères.
+- Jamais la question ni la réponse dans les journaux, à aucun niveau : seulement modèle, durée, longueur
+  (`test/logs.test.js`).
+- Une seule instance de serveur, identifiant d'appareil fixe (`server`/`ollama`) : changer d'adresse garde
+  l'appareil et son historique. « Hors ligne » seulement sur silence (refus de connexion, délai) ; une clé
+  refusée ou une mauvaise adresse ne passe que par le statut de connexion.

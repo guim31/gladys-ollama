@@ -30,6 +30,14 @@ Gladys before reporting a problem.
 
 In scope: the code of this repository and the Docker image it publishes.
 
+The integration stores nothing under `/data`. The optional API key (for a
+reverse proxy in front of Ollama) stays in the Gladys configuration, is sent
+only to the configured server as a Bearer token, and never reaches the logs.
+The questions and the answers of the scene actions are not logged either. The
+integration only talks to the Ollama address entered in the configuration,
+over the local network; Ollama itself has no authentication, so keep its port
+inside your network.
+
 Out of scope: Gladys Assistant itself (see its
 [security policy](https://github.com/GladysAssistant/Gladys/security/policy)),
-and the third-party services and devices the integration talks to.
+Ollama and the models it runs.

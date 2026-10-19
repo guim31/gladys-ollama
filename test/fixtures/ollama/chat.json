@@ -1,0 +1,17 @@
+{
+  "model": "qwen2.5:0.5b",
+  "created_at": "2026-10-19T19:51:17.64093027Z",
+  "message": {
+    "role": "assistant",
+    "content": "Paris"
+  },
+  "done": true,
+  "done_reason": "stop",
+  "total_duration": 2400732304,
+  "load_duration": 1810023793,
+  "prompt_eval_count": 30,
+  "prompt_eval_cached_count": 0,
+  "prompt_eval_duration": 539287000,
+  "eval_count": 2,
+  "eval_duration": 33463000
+}
