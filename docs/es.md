@@ -82,7 +82,7 @@ memoria usada. Dos botones:
     español.»;
   - **Creatividad**: el ajuste del modelo, o de precisa (0) a muy creativa (1,2);
   - **Respuesta más larga**: en caracteres (1000 por defecto, 10 000 como máximo). Una respuesta
-    más larga se corta al final de una frase, marcada con `…`.
+    más larga se corta al final de una frase (o de una palabra), marcada con `…`.
 
   Sus resultados están disponibles para las acciones siguientes: **Respuesta**, **Modelo
   usado**, **Tiempo de respuesta** (segundos) y **Respuesta cortada** (sí/no). En una acción

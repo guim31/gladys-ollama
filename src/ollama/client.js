@@ -75,6 +75,13 @@ export class OllamaClient {
           { cause: err },
         );
       }
+      // fetch refuses redirects (`redirect: 'error'`): a proxy sending HTTP
+      // to HTTPS is a wrong address, not a server that is down.
+      if (/redirect/i.test(String(err?.cause?.message ?? err?.message))) {
+        throw new OllamaError(ERROR_KINDS.NOT_OLLAMA, `${method} ${path}: redirected`, {
+          cause: err,
+        });
+      }
       const code = err?.cause?.code ?? err?.code;
       throw new OllamaError(
         ERROR_KINDS.UNREACHABLE,
@@ -105,6 +112,12 @@ export class OllamaClient {
     if (response.status === 404 && serverError && /model .*not found/i.test(serverError)) {
       throw new OllamaError(ERROR_KINDS.MODEL_NOT_FOUND, `${method} ${path}: ${serverError}`, {
         status: 404,
+      });
+    }
+    // A reverse proxy whose Ollama is stopped: the server is down.
+    if ([502, 503, 504].includes(response.status)) {
+      throw new OllamaError(ERROR_KINDS.UNREACHABLE, `${method} ${path}: HTTP ${response.status}`, {
+        status: response.status,
       });
     }
     if (!response.ok) {

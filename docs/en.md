@@ -79,7 +79,7 @@ used. Two buttons:
     English.";
   - **Creativity**: the model's own setting, or from precise (0) to very creative (1.2);
   - **Longest answer**: in characters (1000 by default, 10,000 at most). A longer answer is
-    cut at the end of a sentence, marked with `…`.
+    cut at the end of a sentence (or of a word), marked with `…`.
 
   Its results are available to the following actions: **Answer**, **Model used**, **Answer
   time** (seconds) and **Answer cut** (yes/no). In a **Send Message** action, type `{{` and

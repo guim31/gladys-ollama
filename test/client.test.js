@@ -82,3 +82,18 @@ test('a server error keeps the reason of Ollama, never the request', async () =>
   assert.match(err.message, /more system memory/);
   assert.doesNotMatch(err.message, /secret question/);
 });
+
+test('a redirect is a wrong address, a 503 from a proxy a server down', async () => {
+  const redirecting = async () => {
+    throw new TypeError('fetch failed', { cause: new Error('unexpected redirect') });
+  };
+  const err = await new OllamaClient({ url: 'http://192.0.2.20', fetch: redirecting })
+    .version()
+    .catch((e) => e);
+  assert.equal(err.kind, ERROR_KINDS.NOT_OLLAMA);
+  const proxy = async () => new Response('<html>503</html>', { status: 503 });
+  const down = await new OllamaClient({ url: 'https://ai.example.org', fetch: proxy })
+    .version()
+    .catch((e) => e);
+  assert.equal(down.kind, ERROR_KINDS.UNREACHABLE);
+});

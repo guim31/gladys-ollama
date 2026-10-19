@@ -82,7 +82,7 @@ mémoire utilisée. Deux boutons :
     français. » ;
   - **Créativité** : le réglage du modèle, ou de précise (0) à très créative (1,2) ;
   - **Réponse la plus longue** : en caractères (1000 par défaut, 10 000 au plus). Une réponse
-    plus longue est coupée à la fin d'une phrase, marquée par `…`.
+    plus longue est coupée à la fin d'une phrase (ou d'un mot), marquée par `…`.
 
   Ses résultats sont disponibles pour les actions suivantes : **Réponse**, **Modèle utilisé**,
   **Temps de réponse** (secondes) et **Réponse coupée** (oui/non). Dans une action **Envoyer un

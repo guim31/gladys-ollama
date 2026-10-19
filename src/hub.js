@@ -250,9 +250,16 @@ export class OllamaHub {
     if (!this.client) {
       return this.afterChanges(false);
     }
-    this.reading ??= this.read().finally(() => {
-      this.reading = null;
-    });
+    // A read of a previous address is not shared: the new one is read now.
+    if (this.reading?.client !== this.client) {
+      const reading = this.read().finally(() => {
+        if (this.reading === reading) {
+          this.reading = null;
+        }
+      });
+      reading.client = this.client;
+      this.reading = reading;
+    }
     return this.reading;
   }
 
@@ -335,6 +342,8 @@ export class OllamaHub {
     // configuration problem, reported by the connection status.
     if (!DOWN_KINDS.has(err.kind)) {
       state.failures = 0;
+      // Keeps the heartbeat of the last values going.
+      await this.publishStates();
       return wasError !== err.kind;
     }
     state.failures += 1;
@@ -351,6 +360,7 @@ export class OllamaHub {
       await this.publishStates();
       return true;
     }
+    await this.publishStates();
     return wasError !== err.kind;
   }
 
@@ -537,7 +547,12 @@ export class OllamaHub {
       logger.warn(`Question to ${model}: empty answer`);
       throw new Error(pick(ACTION_TEXT.emptyAnswer, language));
     }
-    const { text: response, truncated } = truncate(text, max);
+    let { text: response, truncated } = truncate(text, max);
+    if (!truncated && answer.doneReason === 'length') {
+      // Ollama stopped at num_predict, mid-sentence: cut cleanly there too.
+      ({ text: response } = truncate(response, response.length - 1));
+      truncated = true;
+    }
     const seconds =
       Math.round(
         (answer.durationNs ? answer.durationNs / 1e9 : (this.now() - started) / 1000) * 10,
@@ -554,7 +569,8 @@ export class OllamaHub {
     const client = this.requireClient();
     const model = this.modelOf(typedModel);
     try {
-      await client.load(model, this.config.keepAlive);
+      // keep_alive 0 would unload at once: the server's own delay instead.
+      await client.load(model, this.config.keepAlive === 0 ? undefined : this.config.keepAlive);
     } catch (err) {
       logger.warn(`Loading ${model} failed: ${err.message}`);
       throw this.userError(err);
@@ -571,27 +587,26 @@ export class OllamaHub {
   async unload(typedModel) {
     const client = this.requireClient();
     const typed = typeof typedModel === 'string' ? typedModel.trim() : '';
-    let models;
-    if (typed) {
-      models = [typed];
-    } else {
-      try {
-        models = (await client.ps()).map((model) => model.name);
-      } catch (err) {
-        throw this.userError(err);
-      }
+    let loaded;
+    try {
+      loaded = (await client.ps()).map((model) => model.name);
+    } catch (err) {
+      throw this.userError(err);
     }
-    for (const model of models) {
-      try {
-        await client.unload(model);
-      } catch (err) {
-        logger.warn(`Unloading ${model} failed: ${err.message}`);
-        throw this.userError(err);
-      }
+    const inMemory = (name) => loaded.includes(name) || loaded.includes(`${name}:latest`);
+    // A model typed is unloaded even when not seen in memory (a load may be
+    // under way); only the ones that were in memory are counted.
+    const models = typed ? [typed] : loaded;
+    try {
+      await Promise.all(models.map((model) => client.unload(model)));
+    } catch (err) {
+      logger.warn(`Unloading failed: ${err.message}`);
+      throw this.userError(err);
     }
+    const count = models.filter(inMemory).length;
     logger.info(models.length ? `Unloaded: ${models.join(', ')}` : 'No model to unload');
-    await this.refresh();
-    return models.length;
+    this.refreshSoon();
+    return count;
   }
 
   /** "Test the connection": read the server now, one line. */
@@ -607,6 +622,8 @@ export class OllamaHub {
           pick(ERROR_TEXT[this.state.error.kind], language),
           language,
         );
+      } else if (!this.state.models || !this.state.loaded) {
+        message[language] = pick(ERROR_TEXT[ERROR_KINDS.TIMEOUT], language);
       } else if (this.state.models.length === 0) {
         message[language] = `${text.ok(this.state.version)} ${text.none}`;
       } else {

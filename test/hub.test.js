@@ -243,6 +243,9 @@ test('load and unload a model', async (t) => {
   w.server.load('qwen2.5:0.5b');
   ack = await w.fake.sceneAction('unload_model', {});
   assert.deepEqual(ack.data.outputs, { unloaded: 2 });
+  ack = await w.fake.sceneAction('unload_model', { model: 'smollm2:135m' });
+  assert.deepEqual(ack.data.outputs, { unloaded: 0 }, 'not in memory: not counted');
+  await w.hub.refresh();
   assert.equal(w.fake.lastState(featureId(w.gladys, FEATURE_KEYS.LOADED)), 0);
 });
 
@@ -282,4 +285,67 @@ test('truncate, cleanAnswer, parseTemperature', () => {
   assert.equal(parseTemperature('default'), undefined);
   assert.equal(parseTemperature('0,8'), 0.8);
   assert.equal(parseTemperature('5'), undefined);
+});
+
+test('"Unload right away" does not turn a load into an unload', async (t) => {
+  const w = await world(t, {
+    config: { url: '192.0.2.20', default_model: 'smollm2:135m', keep_alive: '0' },
+  });
+  await w.fake.sceneAction('load_model', {});
+  const request = w.server.requests.find((r) => r.path === '/api/generate').body;
+  assert.equal('keep_alive' in request, false);
+  assert.equal(w.server.ps.length, 1);
+});
+
+test('an answer Ollama stopped at the length limit is marked as cut', async (t) => {
+  const server = new FakeOllama();
+  server.reply = () => ({
+    ...fixture('chat'),
+    done_reason: 'length',
+    message: { role: 'assistant', content: 'Il était une fois un lama qui vivait dans les mont' },
+  });
+  const w = await world(t, {
+    server,
+    config: { url: '192.0.2.20', default_model: 'smollm2:135m' },
+  });
+  const { outputs } = (await w.fake.sceneAction('ask', { prompt: 'Une histoire' })).data;
+  assert.equal(outputs.truncated, true);
+  assert.equal(outputs.response, 'Il était une fois un lama qui vivait dans les…');
+});
+
+test('a reverse proxy answering 502 counts as offline', async (t) => {
+  const server = new FakeOllama();
+  const w = await world(t, { server });
+  const real = server.fetch;
+  server.fetch = async () => new Response('<html>Bad Gateway</html>', { status: 502 });
+  w.hub.client.fetch = server.fetch;
+  await w.hub.refresh();
+  await w.hub.refresh();
+  assert.equal(w.fake.sceneEvents.length, 1);
+  w.hub.client.fetch = real;
+  await w.hub.refresh();
+  assert.equal(w.fake.sceneEvents.length, 2);
+});
+
+test('a new address is read at once, even while the old one is being read', async (t) => {
+  const server = new FakeOllama();
+  const w = await world(t, { server });
+  let release;
+  const slow = new Promise((resolve) => {
+    release = resolve;
+  });
+  const real = server.fetch;
+  w.hub.client.fetch = async (...args) => {
+    await slow;
+    return real(...args);
+  };
+  const pending = w.hub.refresh();
+  server.url = 'http://198.51.100.5:11434';
+  await w.fake.configUpdated({ url: '198.51.100.5', language: 'en' });
+  assert.equal(w.hub.state.online, true, 'the new server was read');
+  const ack = await w.fake.action('test_connection', {});
+  assert.equal(ack.success, true, ack.error);
+  release();
+  await pending;
+  assert.equal(w.fake.connectionStatus.connected, true);
 });

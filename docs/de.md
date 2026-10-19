@@ -82,7 +82,7 @@ belegten Speicher. Zwei Tasten:
     Deutsch.“;
   - **Kreativität**: die Einstellung des Modells oder von präzise (0) bis sehr kreativ (1,2);
   - **Längste Antwort**: in Zeichen (standardmäßig 1000, höchstens 10.000). Eine längere
-    Antwort wird am Ende eines Satzes gekürzt und mit `…` markiert.
+    Antwort wird am Ende eines Satzes (oder Wortes) gekürzt und mit `…` markiert.
 
   Die Ergebnisse stehen den folgenden Aktionen zur Verfügung: **Antwort**, **Verwendetes
   Modell**, **Antwortzeit** (Sekunden) und **Antwort gekürzt** (ja/nein). Tippe in einer Aktion
