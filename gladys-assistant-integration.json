@@ -1,177 +1,735 @@
 {
   "manifest_version": 1,
   "type": "device",
-  "name": "Demo Devices Template",
+  "name": "Ollama",
   "description": {
-    "en": "Starter template showing sensors, a switch, a dimmable light and a smart plug.",
-    "fr": "Template de démarrage : capteurs, interrupteur, lampe variable et prise connectée."
+    "en": "Ask your local Ollama models from a scene, and follow the state of the server.",
+    "fr": "Interrogez vos modèles Ollama locaux depuis une scène et suivez l'état du serveur.",
+    "de": "Frag deine lokalen Ollama-Modelle aus einer Szene und behalte den Server im Blick.",
+    "es": "Pregunte a sus modelos locales de Ollama desde una escena y siga el estado del servidor."
   },
   "version": "1.0.0",
-  "docker_image": "ghcr.io/gladysassistant/integration-template-js:1.0.0",
+  "docker_image": "ghcr.io/guim31/gladys-ollama:1.0.0",
   "gladys_version": ">=5.1.0",
-  "cover_image": "https://raw.githubusercontent.com/GladysAssistant/integration-template-js/master/cover.png",
-  "categories": ["lighting", "security", "environment"],
-  "transports": ["local", "cloud"],
+  "cover_image": "https://raw.githubusercontent.com/guim31/gladys-ollama/main/cover.png",
+  "categories": ["assistants", "services"],
+  "transports": ["local"],
   "config_schema": [
     {
       "key": "intro",
       "type": "section",
-      "label": { "en": "Getting started", "fr": "Pour commencer" },
+      "label": {
+        "en": "Your Ollama server",
+        "fr": "Votre serveur Ollama",
+        "de": "Dein Ollama-Server",
+        "es": "Su servidor Ollama"
+      },
       "description": {
-        "en": "The demo weather station reads real data from the free Open-Meteo API: pick the coordinates to observe. No account, no API key.",
-        "fr": "La station météo de démonstration lit de vraies données via l'API gratuite Open-Meteo : choisissez les coordonnées à observer. Pas de compte, pas de clé d'API."
+        "en": "Ollama listens on port 11434. If it runs on another machine than Gladys, start it with OLLAMA_HOST=0.0.0.0 so that it accepts the network.",
+        "fr": "Ollama écoute sur le port 11434. S'il tourne sur une autre machine que Gladys, lancez-le avec OLLAMA_HOST=0.0.0.0 pour qu'il accepte le réseau.",
+        "de": "Ollama lauscht auf Port 11434. Läuft es auf einem anderen Rechner als Gladys, starte es mit OLLAMA_HOST=0.0.0.0, damit es das Netzwerk annimmt.",
+        "es": "Ollama escucha en el puerto 11434. Si se ejecuta en otra máquina que Gladys, inícielo con OLLAMA_HOST=0.0.0.0 para que acepte la red."
       },
       "links": [
         {
-          "url": "https://open-meteo.com/en/docs",
-          "label": { "en": "Open-Meteo documentation", "fr": "Documentation Open-Meteo" }
+          "url": "https://docs.ollama.com/faq#how-do-i-configure-ollama-server",
+          "label": {
+            "en": "Configure the Ollama server",
+            "fr": "Configurer le serveur Ollama",
+            "de": "Ollama-Server konfigurieren",
+            "es": "Configurar el servidor Ollama"
+          }
         }
       ]
     },
     {
-      "key": "latitude",
-      "type": "number",
-      "label": { "en": "Latitude", "fr": "Latitude" },
-      "description": {
-        "en": "Latitude used for the demo weather sensor.",
-        "fr": "Latitude utilisée par le capteur météo de démonstration."
+      "key": "url",
+      "type": "string",
+      "label": {
+        "en": "Address",
+        "fr": "Adresse",
+        "de": "Adresse",
+        "es": "Dirección"
       },
-      "placeholder": { "en": "e.g. 48.8566", "fr": "ex. 48.8566" },
+      "description": {
+        "en": "IP address or name of the server (port 11434 by default), or the full URL of a reverse proxy.",
+        "fr": "Adresse IP ou nom du serveur (port 11434 par défaut), ou l'URL complète d'un proxy inverse.",
+        "de": "IP-Adresse oder Name des Servers (standardmäßig Port 11434) oder die vollständige URL eines Reverse-Proxys.",
+        "es": "Dirección IP o nombre del servidor (puerto 11434 por defecto), o la URL completa de un proxy inverso."
+      },
+      "placeholder": {
+        "en": "e.g. 192.168.1.20",
+        "fr": "ex. 192.168.1.20",
+        "de": "z. B. 192.168.1.20",
+        "es": "p. ej. 192.168.1.20"
+      },
       "required": true,
-      "default": 48.8566,
-      "min": -90,
-      "max": 90
+      "default": ""
     },
     {
-      "key": "longitude",
-      "type": "number",
-      "label": { "en": "Longitude", "fr": "Longitude" },
-      "description": {
-        "en": "Longitude used for the demo weather sensor.",
-        "fr": "Longitude utilisée par le capteur météo de démonstration."
+      "key": "api_key",
+      "type": "secret",
+      "label": {
+        "en": "API key (optional)",
+        "fr": "Clé d'API (facultative)",
+        "de": "API-Schlüssel (optional)",
+        "es": "Clave de API (opcional)"
       },
-      "placeholder": { "en": "e.g. 2.3522", "fr": "ex. 2.3522" },
-      "required": true,
-      "default": 2.3522,
-      "min": -180,
-      "max": 180
+      "description": {
+        "en": "Only for a reverse proxy that asks for a Bearer token: Ollama itself has no password.",
+        "fr": "Seulement pour un proxy inverse qui demande un jeton Bearer : Ollama n'a pas de mot de passe.",
+        "de": "Nur für einen Reverse-Proxy, der ein Bearer-Token verlangt: Ollama selbst hat kein Passwort.",
+        "es": "Solo para un proxy inverso que pida un token Bearer: Ollama no tiene contraseña."
+      },
+      "required": false
     },
     {
-      "key": "unit",
-      "type": "select",
-      "label": { "en": "Temperature unit", "fr": "Unité de température" },
+      "key": "default_model",
+      "type": "string",
+      "label": {
+        "en": "Default model",
+        "fr": "Modèle par défaut",
+        "de": "Standardmodell",
+        "es": "Modelo predeterminado"
+      },
+      "description": {
+        "en": "Used when a scene action names no model. \"Test the connection\" lists the installed models.",
+        "fr": "Utilisé quand une action de scène ne nomme aucun modèle. « Tester la connexion » liste les modèles installés.",
+        "de": "Wird verwendet, wenn eine Szenen-Aktion kein Modell nennt. „Verbindung testen“ listet die installierten Modelle.",
+        "es": "Se usa cuando una acción de escena no indica ningún modelo. «Probar la conexión» lista los modelos instalados."
+      },
+      "placeholder": {
+        "en": "e.g. llama3.2",
+        "fr": "ex. llama3.2",
+        "de": "z. B. llama3.2",
+        "es": "p. ej. llama3.2"
+      },
       "required": false,
-      "default": "celsius",
+      "default": ""
+    },
+    {
+      "key": "timeout",
+      "type": "select",
+      "label": {
+        "en": "Longest wait for an answer",
+        "fr": "Attente maximale d'une réponse",
+        "de": "Längste Wartezeit auf eine Antwort",
+        "es": "Espera máxima de una respuesta"
+      },
+      "description": {
+        "en": "A large model on a processor without graphics card can take a minute or more.",
+        "fr": "Un gros modèle sur un processeur sans carte graphique peut mettre une minute ou plus.",
+        "de": "Ein großes Modell auf einem Prozessor ohne Grafikkarte kann eine Minute oder länger brauchen.",
+        "es": "Un modelo grande en un procesador sin tarjeta gráfica puede tardar un minuto o más."
+      },
+      "required": false,
+      "default": "60",
       "options": [
-        { "value": "celsius", "label": { "en": "Celsius", "fr": "Celsius" } },
-        { "value": "fahrenheit", "label": { "en": "Fahrenheit", "fr": "Fahrenheit" } }
+        {
+          "value": "30",
+          "label": {
+            "en": "30 seconds",
+            "fr": "30 secondes",
+            "de": "30 Sekunden",
+            "es": "30 segundos"
+          }
+        },
+        {
+          "value": "60",
+          "label": {
+            "en": "60 seconds",
+            "fr": "60 secondes",
+            "de": "60 Sekunden",
+            "es": "60 segundos"
+          }
+        },
+        {
+          "value": "90",
+          "label": {
+            "en": "90 seconds",
+            "fr": "90 secondes",
+            "de": "90 Sekunden",
+            "es": "90 segundos"
+          }
+        },
+        {
+          "value": "110",
+          "label": {
+            "en": "110 seconds",
+            "fr": "110 secondes",
+            "de": "110 Sekunden",
+            "es": "110 segundos"
+          }
+        }
       ]
     },
     {
-      "key": "poll_frequency",
-      "type": "number",
-      "label": { "en": "Refresh interval (s)", "fr": "Intervalle de rafraîchissement (s)" },
+      "key": "keep_alive",
+      "type": "select",
+      "label": {
+        "en": "Keep the model in memory",
+        "fr": "Garder le modèle en mémoire",
+        "de": "Modell im Speicher halten",
+        "es": "Mantener el modelo en memoria"
+      },
       "description": {
-        "en": "How often sensors are polled, in seconds (one minute minimum).",
-        "fr": "Fréquence d'interrogation des capteurs, en secondes (une minute minimum)."
+        "en": "After a question or a load. Longer: quicker answers, but the memory stays taken.",
+        "fr": "Après une question ou un chargement. Plus long : réponses plus rapides, mais la mémoire reste prise.",
+        "de": "Nach einer Frage oder einem Laden. Länger: schnellere Antworten, aber der Speicher bleibt belegt.",
+        "es": "Tras una pregunta o una carga. Más tiempo: respuestas más rápidas, pero la memoria sigue ocupada."
       },
       "required": false,
-      "default": 300,
-      "min": 60,
-      "max": 3600
+      "default": "default",
+      "options": [
+        {
+          "value": "default",
+          "label": {
+            "en": "Server setting (5 min)",
+            "fr": "Réglage du serveur (5 min)",
+            "de": "Servereinstellung (5 min)",
+            "es": "Ajuste del servidor (5 min)"
+          }
+        },
+        {
+          "value": "0",
+          "label": {
+            "en": "Unload right away",
+            "fr": "Décharger aussitôt",
+            "de": "Sofort entladen",
+            "es": "Descargar enseguida"
+          }
+        },
+        {
+          "value": "5m",
+          "label": {
+            "en": "5 minutes",
+            "fr": "5 minutes",
+            "de": "5 Minuten",
+            "es": "5 minutos"
+          }
+        },
+        {
+          "value": "30m",
+          "label": {
+            "en": "30 minutes",
+            "fr": "30 minutes",
+            "de": "30 Minuten",
+            "es": "30 minutos"
+          }
+        },
+        {
+          "value": "1h",
+          "label": {
+            "en": "1 hour",
+            "fr": "1 heure",
+            "de": "1 Stunde",
+            "es": "1 hora"
+          }
+        },
+        {
+          "value": "24h",
+          "label": {
+            "en": "24 hours",
+            "fr": "24 heures",
+            "de": "24 Stunden",
+            "es": "24 horas"
+          }
+        },
+        {
+          "value": "-1",
+          "label": {
+            "en": "Until unloaded",
+            "fr": "Jusqu'au déchargement",
+            "de": "Bis zum Entladen",
+            "es": "Hasta descargarlo"
+          }
+        }
+      ]
+    },
+    {
+      "key": "poll_interval",
+      "type": "select",
+      "label": {
+        "en": "Refresh interval",
+        "fr": "Intervalle de rafraîchissement",
+        "de": "Aktualisierungsintervall",
+        "es": "Intervalo de actualización"
+      },
+      "description": {
+        "en": "How often the state of the server is read.",
+        "fr": "Fréquence de lecture de l'état du serveur.",
+        "de": "Wie oft der Zustand des Servers gelesen wird.",
+        "es": "Con qué frecuencia se lee el estado del servidor."
+      },
+      "required": false,
+      "default": "60",
+      "options": [
+        {
+          "value": "30",
+          "label": {
+            "en": "30 seconds",
+            "fr": "30 secondes",
+            "de": "30 Sekunden",
+            "es": "30 segundos"
+          }
+        },
+        {
+          "value": "60",
+          "label": {
+            "en": "1 minute",
+            "fr": "1 minute",
+            "de": "1 Minute",
+            "es": "1 minuto"
+          }
+        },
+        {
+          "value": "120",
+          "label": {
+            "en": "2 minutes",
+            "fr": "2 minutes",
+            "de": "2 Minuten",
+            "es": "2 minutos"
+          }
+        },
+        {
+          "value": "300",
+          "label": {
+            "en": "5 minutes",
+            "fr": "5 minutes",
+            "de": "5 Minuten",
+            "es": "5 minutos"
+          }
+        }
+      ]
+    },
+    {
+      "key": "language",
+      "type": "select",
+      "label": {
+        "en": "Language of the feature names",
+        "fr": "Langue des noms de fonctionnalités",
+        "de": "Sprache der Funktionsnamen",
+        "es": "Idioma de los nombres de funciones"
+      },
+      "description": {
+        "en": "Names given to the features when the device is added, and texts of the scene events and errors.",
+        "fr": "Noms donnés aux fonctionnalités à l'ajout de l'appareil, et textes des événements de scène et des erreurs.",
+        "de": "Namen der Funktionen beim Hinzufügen des Geräts und Texte der Szenen-Ereignisse und Fehler.",
+        "es": "Nombres de las funciones al añadir el dispositivo y textos de los eventos de escena y de los errores."
+      },
+      "required": false,
+      "default": "fr",
+      "options": [
+        {
+          "value": "en",
+          "label": {
+            "en": "English",
+            "fr": "Anglais",
+            "de": "Englisch",
+            "es": "Inglés"
+          }
+        },
+        {
+          "value": "fr",
+          "label": {
+            "en": "French",
+            "fr": "Français",
+            "de": "Französisch",
+            "es": "Francés"
+          }
+        },
+        {
+          "value": "de",
+          "label": {
+            "en": "German",
+            "fr": "Allemand",
+            "de": "Deutsch",
+            "es": "Alemán"
+          }
+        },
+        {
+          "value": "es",
+          "label": {
+            "en": "Spanish",
+            "fr": "Espagnol",
+            "de": "Spanisch",
+            "es": "Español"
+          }
+        }
+      ]
     }
   ],
   "actions": [
     {
-      "key": "test_weather",
-      "label": { "en": "Test the weather provider", "fr": "Tester le fournisseur météo" },
+      "key": "test_connection",
+      "label": {
+        "en": "Test the connection",
+        "fr": "Tester la connexion",
+        "de": "Verbindung testen",
+        "es": "Probar la conexión"
+      },
       "timeout_seconds": 30
-    },
-    {
-      "key": "identify",
-      "label": { "en": "Identify a device", "fr": "Identifier un appareil" },
-      "fields": [
-        {
-          "key": "device",
-          "type": "select",
-          "source": "devices",
-          "label": { "en": "Device", "fr": "Appareil" },
-          "required": true
-        }
-      ]
     }
   ],
   "scene_triggers": [
     {
-      "key": "motion_detected",
-      "label": { "en": "Motion detected", "fr": "Mouvement détecté" },
-      "description": {
-        "en": "A demo motion sensor saw a person or an animal move.",
-        "fr": "Un détecteur de démonstration a vu bouger une personne ou un animal."
+      "key": "server_offline",
+      "label": {
+        "en": "Ollama is offline",
+        "fr": "Ollama est hors ligne",
+        "de": "Ollama ist offline",
+        "es": "Ollama está fuera de línea"
       },
-      "fields": [
-        {
-          "key": "device",
-          "type": "select",
-          "source": "devices",
-          "label": { "en": "Sensor", "fr": "Détecteur" }
-        },
-        {
-          "key": "target",
-          "type": "multi_select",
-          "label": { "en": "What moved", "fr": "Ce qui a bougé" },
-          "options": [
-            { "value": "person", "label": { "en": "Person", "fr": "Personne" } },
-            { "value": "animal", "label": { "en": "Animal", "fr": "Animal" } }
-          ]
-        }
-      ],
+      "description": {
+        "en": "The server stops answering (two failed readings in a row): the questions of your scenes will fail.",
+        "fr": "Le serveur ne répond plus (deux lectures en échec de suite) : les questions de vos scènes échoueront.",
+        "de": "Der Server antwortet nicht mehr (zwei fehlgeschlagene Abfragen in Folge): Die Fragen deiner Szenen schlagen fehl.",
+        "es": "El servidor deja de responder (dos lecturas fallidas seguidas): las preguntas de sus escenas fallarán."
+      },
       "variables": [
         {
-          "key": "target",
+          "key": "error",
           "type": "string",
-          "label": { "en": "What moved", "fr": "Ce qui a bougé" }
+          "label": {
+            "en": "Reason",
+            "fr": "Raison",
+            "de": "Grund",
+            "es": "Motivo"
+          }
+        }
+      ]
+    },
+    {
+      "key": "server_back",
+      "label": {
+        "en": "Ollama is back online",
+        "fr": "Ollama est de retour",
+        "de": "Ollama ist wieder online",
+        "es": "Ollama vuelve a estar en línea"
+      },
+      "description": {
+        "en": "The server answers again after being offline, with the length of the outage.",
+        "fr": "Le serveur répond de nouveau après avoir été hors ligne, avec la durée de la panne.",
+        "de": "Der Server antwortet wieder, nachdem er offline war, mit der Dauer des Ausfalls.",
+        "es": "El servidor responde de nuevo tras estar fuera de línea, con la duración de la caída."
+      },
+      "variables": [
+        {
+          "key": "downtime_minutes",
+          "type": "number",
+          "label": {
+            "en": "Outage length (minutes)",
+            "fr": "Durée de la panne (minutes)",
+            "de": "Dauer des Ausfalls (Minuten)",
+            "es": "Duración de la caída (minutos)"
+          }
         }
       ]
     }
   ],
   "scene_actions": [
     {
-      "key": "identify_device",
-      "label": { "en": "Identify a device", "fr": "Identifier un appareil" },
-      "description": {
-        "en": "Make a device signal itself (the demo light blinks).",
-        "fr": "Fait se signaler un appareil (la lampe de démonstration clignote)."
+      "key": "ask",
+      "label": {
+        "en": "Ask Ollama",
+        "fr": "Demander à Ollama",
+        "de": "Ollama fragen",
+        "es": "Preguntar a Ollama"
       },
-      "timeout_seconds": 15,
+      "description": {
+        "en": "Asks a local model a question and hands its answer to the next actions (message, speech, condition).",
+        "fr": "Pose une question à un modèle local et passe sa réponse aux actions suivantes (message, voix, condition).",
+        "de": "Stellt einem lokalen Modell eine Frage und gibt seine Antwort an die nächsten Aktionen weiter (Nachricht, Sprache, Bedingung).",
+        "es": "Hace una pregunta a un modelo local y pasa su respuesta a las acciones siguientes (mensaje, voz, condición)."
+      },
+      "timeout_seconds": 120,
       "fields": [
         {
-          "key": "device",
-          "type": "select",
-          "source": "devices",
-          "label": { "en": "Device", "fr": "Appareil" },
+          "key": "prompt",
+          "type": "string",
+          "label": {
+            "en": "Question",
+            "fr": "Question",
+            "de": "Frage",
+            "es": "Pregunta"
+          },
+          "description": {
+            "en": "Type '{{' to insert scene information: a temperature, a trigger value…",
+            "fr": "Tapez « {{ » pour insérer des informations de la scène : une température, une valeur du déclencheur…",
+            "de": "Tippe „{{“, um Informationen der Szene einzufügen: eine Temperatur, einen Wert des Auslösers…",
+            "es": "Escriba «{{» para insertar información de la escena: una temperatura, un valor del desencadenante…"
+          },
           "required": true
+        },
+        {
+          "key": "model",
+          "type": "string",
+          "label": {
+            "en": "Model (empty: the default one)",
+            "fr": "Modèle (vide : celui par défaut)",
+            "de": "Modell (leer: das Standardmodell)",
+            "es": "Modelo (vacío: el predeterminado)"
+          },
+          "placeholder": {
+            "en": "e.g. llama3.2",
+            "fr": "ex. llama3.2",
+            "de": "z. B. llama3.2",
+            "es": "p. ej. llama3.2"
+          },
+          "required": false
+        },
+        {
+          "key": "system",
+          "type": "string",
+          "label": {
+            "en": "Instructions (optional)",
+            "fr": "Consigne (facultative)",
+            "de": "Anweisung (optional)",
+            "es": "Instrucciones (opcional)"
+          },
+          "description": {
+            "en": "How the model must answer, e.g. \"Answer in one short sentence, in English.\"",
+            "fr": "Comment le modèle doit répondre, ex. « Réponds en une phrase courte, en français. »",
+            "de": "Wie das Modell antworten soll, z. B. „Antworte in einem kurzen Satz auf Deutsch.“",
+            "es": "Cómo debe responder el modelo, p. ej. «Responde en una frase corta, en español.»"
+          },
+          "required": false
+        },
+        {
+          "key": "temperature",
+          "type": "select",
+          "label": {
+            "en": "Creativity",
+            "fr": "Créativité",
+            "de": "Kreativität",
+            "es": "Creatividad"
+          },
+          "required": false,
+          "default": "default",
+          "options": [
+            {
+              "value": "default",
+              "label": {
+                "en": "Model setting",
+                "fr": "Réglage du modèle",
+                "de": "Einstellung des Modells",
+                "es": "Ajuste del modelo"
+              }
+            },
+            {
+              "value": "0",
+              "label": {
+                "en": "Precise (0)",
+                "fr": "Précise (0)",
+                "de": "Präzise (0)",
+                "es": "Precisa (0)"
+              }
+            },
+            {
+              "value": "0.4",
+              "label": {
+                "en": "Balanced (0.4)",
+                "fr": "Équilibrée (0,4)",
+                "de": "Ausgewogen (0,4)",
+                "es": "Equilibrada (0,4)"
+              }
+            },
+            {
+              "value": "0.8",
+              "label": {
+                "en": "Creative (0.8)",
+                "fr": "Créative (0,8)",
+                "de": "Kreativ (0,8)",
+                "es": "Creativa (0,8)"
+              }
+            },
+            {
+              "value": "1.2",
+              "label": {
+                "en": "Very creative (1.2)",
+                "fr": "Très créative (1,2)",
+                "de": "Sehr kreativ (1,2)",
+                "es": "Muy creativa (1,2)"
+              }
+            }
+          ]
+        },
+        {
+          "key": "max_characters",
+          "type": "number",
+          "label": {
+            "en": "Longest answer (characters)",
+            "fr": "Réponse la plus longue (caractères)",
+            "de": "Längste Antwort (Zeichen)",
+            "es": "Respuesta más larga (caracteres)"
+          },
+          "description": {
+            "en": "A longer answer is cut cleanly. A text message holds about 1000 characters well.",
+            "fr": "Une réponse plus longue est coupée proprement. Un message tient bien 1000 caractères environ.",
+            "de": "Eine längere Antwort wird sauber gekürzt. Eine Nachricht fasst gut etwa 1000 Zeichen.",
+            "es": "Una respuesta más larga se corta limpiamente. Un mensaje admite bien unos 1000 caracteres."
+          },
+          "required": false,
+          "default": 1000,
+          "min": 50,
+          "max": 10000
         }
       ],
       "outputs": [
         {
-          "key": "signalled",
+          "key": "response",
+          "type": "string",
+          "label": {
+            "en": "Answer",
+            "fr": "Réponse",
+            "de": "Antwort",
+            "es": "Respuesta"
+          }
+        },
+        {
+          "key": "model",
+          "type": "string",
+          "label": {
+            "en": "Model used",
+            "fr": "Modèle utilisé",
+            "de": "Verwendetes Modell",
+            "es": "Modelo usado"
+          }
+        },
+        {
+          "key": "duration_seconds",
+          "type": "number",
+          "label": {
+            "en": "Answer time (seconds)",
+            "fr": "Temps de réponse (secondes)",
+            "de": "Antwortzeit (Sekunden)",
+            "es": "Tiempo de respuesta (segundos)"
+          }
+        },
+        {
+          "key": "truncated",
           "type": "boolean",
-          "label": { "en": "Device signalled", "fr": "Appareil signalé" }
+          "label": {
+            "en": "Answer cut",
+            "fr": "Réponse coupée",
+            "de": "Antwort gekürzt",
+            "es": "Respuesta cortada"
+          }
+        }
+      ]
+    },
+    {
+      "key": "load_model",
+      "label": {
+        "en": "Load an Ollama model",
+        "fr": "Charger un modèle Ollama",
+        "de": "Ollama-Modell laden",
+        "es": "Cargar un modelo de Ollama"
+      },
+      "description": {
+        "en": "Puts a model in memory ahead of time, so that the next question is answered quickly.",
+        "fr": "Met un modèle en mémoire à l'avance, pour que la question suivante soit rapide.",
+        "de": "Lädt ein Modell vorab in den Speicher, damit die nächste Frage schnell beantwortet wird.",
+        "es": "Carga un modelo en memoria por adelantado, para que la siguiente pregunta sea rápida."
+      },
+      "timeout_seconds": 90,
+      "fields": [
+        {
+          "key": "model",
+          "type": "string",
+          "label": {
+            "en": "Model (empty: the default one)",
+            "fr": "Modèle (vide : celui par défaut)",
+            "de": "Modell (leer: das Standardmodell)",
+            "es": "Modelo (vacío: el predeterminado)"
+          },
+          "placeholder": {
+            "en": "e.g. llama3.2",
+            "fr": "ex. llama3.2",
+            "de": "z. B. llama3.2",
+            "es": "p. ej. llama3.2"
+          },
+          "required": false
+        }
+      ],
+      "outputs": [
+        {
+          "key": "model",
+          "type": "string",
+          "label": {
+            "en": "Model loaded",
+            "fr": "Modèle chargé",
+            "de": "Geladenes Modell",
+            "es": "Modelo cargado"
+          }
+        }
+      ]
+    },
+    {
+      "key": "unload_model",
+      "label": {
+        "en": "Unload an Ollama model",
+        "fr": "Décharger un modèle Ollama",
+        "de": "Ollama-Modell entladen",
+        "es": "Descargar un modelo de Ollama"
+      },
+      "description": {
+        "en": "Frees the memory a model holds, or that of every model in memory.",
+        "fr": "Libère la mémoire occupée par un modèle, ou par tous les modèles en mémoire.",
+        "de": "Gibt den Speicher eines Modells frei, oder den aller Modelle im Speicher.",
+        "es": "Libera la memoria que ocupa un modelo, o la de todos los modelos en memoria."
+      },
+      "timeout_seconds": 30,
+      "fields": [
+        {
+          "key": "model",
+          "type": "string",
+          "label": {
+            "en": "Model (empty: all of them)",
+            "fr": "Modèle (vide : tous)",
+            "de": "Modell (leer: alle)",
+            "es": "Modelo (vacío: todos)"
+          },
+          "placeholder": {
+            "en": "e.g. llama3.2",
+            "fr": "ex. llama3.2",
+            "de": "z. B. llama3.2",
+            "es": "p. ej. llama3.2"
+          },
+          "required": false
+        }
+      ],
+      "outputs": [
+        {
+          "key": "unloaded",
+          "type": "number",
+          "label": {
+            "en": "Models unloaded",
+            "fr": "Modèles déchargés",
+            "de": "Entladene Modelle",
+            "es": "Modelos descargados"
+          }
         }
       ]
     }
   ],
   "widgets": [
     {
-      "key": "demo_status",
-      "label": { "en": "Demo status", "fr": "État de la démo" },
-      "description": {
-        "en": "Live temperature and plug power, plug connection and observed location.",
-        "fr": "Température et puissance en direct, connexion de la prise, position observée."
+      "key": "ollama",
+      "label": {
+        "en": "Ollama",
+        "fr": "Ollama",
+        "de": "Ollama",
+        "es": "Ollama"
       },
-      "icon": "activity",
-      "action_timeout_seconds": 15
+      "description": {
+        "en": "Server state, models in memory and the memory they hold, with load and free buttons.",
+        "fr": "État du serveur, modèles en mémoire et mémoire occupée, avec boutons pour charger et libérer.",
+        "de": "Serverstatus, Modelle im Speicher und belegter Speicher, mit Tasten zum Laden und Freigeben.",
+        "es": "Estado del servidor, modelos en memoria y memoria ocupada, con botones para cargar y liberar."
+      },
+      "icon": "cpu",
+      "action_timeout_seconds": 90
     }
   ]
 }

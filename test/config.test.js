@@ -1,33 +1,46 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { normalizeConfig, DEFAULT_CONFIG } from '../src/config.js';
+import { normalizeConfig, parseServerUrl } from '../src/config.js';
 
-test('normalizeConfig returns the defaults when called with no argument', () => {
-  assert.deepEqual(normalizeConfig(), DEFAULT_CONFIG);
+test('parseServerUrl: bare host gets port 11434, a full URL is kept', () => {
+  assert.equal(parseServerUrl('192.0.2.20'), 'http://192.0.2.20:11434');
+  assert.equal(parseServerUrl(' ollama.lan:8080 '), 'http://ollama.lan:8080');
+  assert.equal(parseServerUrl('http://192.0.2.20:11434/'), 'http://192.0.2.20:11434');
+  assert.equal(parseServerUrl('http://192.0.2.20:11434/api'), 'http://192.0.2.20:11434');
+  assert.equal(parseServerUrl('https://ai.example.org/ollama/'), 'https://ai.example.org/ollama');
+  assert.equal(parseServerUrl('https://ai.example.org'), 'https://ai.example.org');
+  assert.equal(parseServerUrl('http://user:pass@192.0.2.20'), null);
+  assert.equal(parseServerUrl('ftp://192.0.2.20'), null);
+  assert.equal(parseServerUrl(''), null);
+  assert.equal(parseServerUrl(undefined), null);
 });
 
-test('normalizeConfig keeps user values over the defaults', () => {
-  const config = normalizeConfig({ latitude: 45.5, longitude: -73.6, unit: 'fahrenheit' });
-  assert.equal(config.latitude, 45.5);
-  assert.equal(config.longitude, -73.6);
-  assert.equal(config.unit, 'fahrenheit');
-});
-
-test('normalizeConfig coerces numeric strings coming from a form', () => {
-  const config = normalizeConfig({ latitude: '48.8', longitude: '2.3', poll_frequency: '600' });
-  assert.equal(config.latitude, 48.8);
-  assert.equal(config.longitude, 2.3);
-  assert.equal(config.poll_frequency, 600);
-  assert.equal(typeof config.poll_frequency, 'number');
-});
-
-test('normalizeConfig falls back to the default for a missing numeric field', () => {
-  const config = normalizeConfig({ unit: 'celsius' });
-  assert.equal(config.poll_frequency, DEFAULT_CONFIG.poll_frequency);
-});
-
-test('GLADYS_PREFER_LOCAL defaults to true and only an explicit false disables it', () => {
-  assert.equal(normalizeConfig().GLADYS_PREFER_LOCAL, true);
-  assert.equal(normalizeConfig({ GLADYS_PREFER_LOCAL: true }).GLADYS_PREFER_LOCAL, true);
-  assert.equal(normalizeConfig({ GLADYS_PREFER_LOCAL: false }).GLADYS_PREFER_LOCAL, false);
+test('normalizeConfig: defaults and choices', () => {
+  assert.deepEqual(normalizeConfig({}), {
+    url: null,
+    urlTyped: false,
+    apiKey: '',
+    defaultModel: '',
+    timeoutMs: 60_000,
+    keepAlive: undefined,
+    pollIntervalMs: 60_000,
+    language: 'fr',
+  });
+  const config = normalizeConfig({
+    url: 'not a url at all',
+    default_model: ' llama3.2 ',
+    timeout: '110',
+    keep_alive: '-1',
+    poll_interval: '7',
+    language: 'it',
+  });
+  assert.equal(config.url, null);
+  assert.equal(config.urlTyped, true);
+  assert.equal(config.defaultModel, 'llama3.2');
+  assert.equal(config.timeoutMs, 110_000);
+  assert.equal(config.keepAlive, -1);
+  assert.equal(config.pollIntervalMs, 60_000);
+  assert.equal(config.language, 'fr');
+  assert.equal(normalizeConfig({ keep_alive: '30m' }).keepAlive, '30m');
+  assert.equal(normalizeConfig({ keep_alive: '0' }).keepAlive, 0);
 });

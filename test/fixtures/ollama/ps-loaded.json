@@ -1,0 +1,22 @@
+{
+  "models": [
+    {
+      "name": "smollm2:135m",
+      "model": "smollm2:135m",
+      "size": 383212583,
+      "digest": "9077fe9d2ae1a4a41a868836b56b8163731a8fe16621397028c2c76f838c6907",
+      "details": {
+        "parent_model": "",
+        "format": "gguf",
+        "family": "llama",
+        "families": ["llama"],
+        "parameter_size": "134.52M",
+        "quantization_level": "F16"
+      },
+      "expires_at": "2026-10-19T19:56:18.996681809Z",
+      "size_vram": 0,
+      "context_length": 4096,
+      "runner": "llamacpp"
+    }
+  ]
+}

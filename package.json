@@ -1,8 +1,8 @@
 {
-  "name": "gladys-integration-template-js",
+  "name": "gladys-ollama",
   "version": "1.0.0",
   "private": true,
-  "description": "Official starter template to build an external integration for Gladys Assistant with the JavaScript SDK.",
+  "description": "Ollama in Gladys Assistant: ask local language models from a scene, follow the state of the server.",
   "type": "module",
   "main": "index.js",
   "scripts": {

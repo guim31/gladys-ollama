@@ -1,77 +1,95 @@
+// -----------------------------------------------------------------------------
+// The dashboard widget: content valid for the core, within its budget, and
+// its two buttons.
+// -----------------------------------------------------------------------------
+
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { validateWidgetContent } from '@gladysassistant/integration-sdk';
-import { createFakeGladys } from '@gladysassistant/integration-sdk/testing';
-import { buildDiscoveredDevices } from '../src/devices/index.js';
-import { simulateLanSession } from '../src/devices/plug.js';
-import { DEMO_STATUS_WIDGET, WIDGETS, refreshWidgets } from '../src/widgets.js';
-import { normalizeConfig } from '../src/config.js';
+import { ACTIONS, formatSize } from '../src/widgets.js';
+import { createWorld } from './helpers/world.js';
 
-const gladys = createFakeGladys();
-const config = normalizeConfig();
-const demoStatus = WIDGETS[DEMO_STATUS_WIDGET];
+async function world(t, options) {
+  const w = await createWorld(options);
+  t.after(() => w.app.stop());
+  return w;
+}
 
-// What the SDK passes to onWidgetGet, plus the config index.js adds.
-const getContent = (cfg = config) =>
-  demoStatus.get(gladys, { settings: {}, language: 'en', units: 'metric', config: cfg });
-
-test('the demo_status content is rendered exactly as sent', async () => {
-  // [] = nothing the core would drop, truncate or trim to the content budget.
-  assert.deepEqual(validateWidgetContent(await getContent()), []);
-});
-
-test('the degraded plug connection content is valid too', async () => {
-  simulateLanSession(false);
-  try {
-    const content = await getContent();
-    assert.deepEqual(validateWidgetContent(content), []);
-    const status = content.components.find((component) => component.type === 'status');
-    assert.ok(
-      status.items.some((item) => item.color === 'warning'),
-      'degraded shows a warning',
-    );
-  } finally {
-    simulateLanSession(true);
+async function content(w, language = 'en') {
+  const ack = await w.fake.widgetGet('ollama', { settings: {}, language });
+  assert.equal(ack.success, true, ack.error);
+  const data = ack.data.content;
+  assert.deepEqual(validateWidgetContent(data), []);
+  assert.ok(data.components.length <= 8, 'budget: 8 components');
+  assert.ok(data.components.filter((c) => c.type === 'text').length <= 2, 'budget: 2 texts');
+  for (const item of data.components.filter((c) => c.type === 'status').flatMap((c) => c.items)) {
+    assert.ok(item.value !== undefined && String(item.value).length <= 40, item.label);
   }
-});
+  return data;
+}
 
-test('the live tiles reference features the integration publishes', async () => {
-  const featureIds = new Set(
-    buildDiscoveredDevices(gladys, config).flatMap((device) =>
-      device.features.map((feature) => feature.external_id),
-    ),
+test('the server, the models in memory and the buttons', async (t) => {
+  const w = await world(t, { config: { url: '192.0.2.20', default_model: 'smollm2:135m' } });
+  w.server.load('smollm2:135m');
+  await w.hub.refresh();
+  const data = await content(w);
+  const values = data.components.filter((c) => c.type === 'value').map((c) => c.value);
+  assert.deepEqual(values, [2, 1, 0.4]);
+  const [status] = data.components.filter((c) => c.type === 'status');
+  assert.deepEqual(
+    status.items.map((item) => [item.label, item.value]),
+    [
+      ['Ollama', 'Online · 0.40.6'],
+      ['smollm2:135m', '365 MB · 6 min'],
+    ],
   );
-  const liveTiles = (await getContent()).components.filter((c) => c.device_feature);
-  assert.ok(liveTiles.length > 0, 'the template demonstrates a device-bound tile');
-  for (const tile of liveTiles) {
-    assert.ok(featureIds.has(tile.device_feature), `unknown feature ${tile.device_feature}`);
-  }
-});
-
-test('every button action of the content is handled and answers a short toast', async () => {
-  const buttons = (await getContent()).components.filter((c) => c.type === 'button' && c.action);
-  assert.ok(buttons.length > 0, 'the template demonstrates a widget action');
-  for (const { action } of buttons) {
-    const message = await demoStatus.action(gladys, {
-      actionKey: action.key,
-      params: action.params ?? {},
-      settings: {},
-      config,
-    });
-    assert.ok(message.en, 'the toast carries at least the mandatory `en` text');
-    assert.ok(message.en.length <= 200, 'toasts are capped at 200 characters');
-  }
-});
-
-test('an unknown widget action fails, so the user sees the error', async () => {
-  await assert.rejects(
-    demoStatus.action(gladys, { actionKey: 'unknown', params: {}, settings: {}, config }),
-    /Unknown widget action/,
+  const buttons = data.components.filter((c) => c.type === 'button');
+  assert.deepEqual(
+    buttons.map((b) => [b.action.key, b.icon]),
+    [
+      [ACTIONS.LOAD, 'check-circle'],
+      [ACTIONS.UNLOAD, 'power'],
+    ],
   );
 });
 
-test('refreshWidgets nudges every widget', () => {
-  const fresh = createFakeGladys();
-  refreshWidgets(fresh);
-  assert.deepEqual(fresh.fake.widgetRefreshes, Object.keys(WIDGETS));
+test('the buttons load the default model and free the memory', async (t) => {
+  const w = await world(t, { config: { url: '192.0.2.20', default_model: 'smollm2:135m' } });
+  let ack = await w.fake.widgetAction('ollama', ACTIONS.LOAD, {}, { settings: {} });
+  assert.equal(ack.data.message.fr, 'smollm2:135m est chargé.');
+  ack = await w.fake.widgetAction('ollama', ACTIONS.UNLOAD, {}, { settings: {} });
+  assert.equal(ack.data.message.en, '1 model(s) unloaded.');
+  assert.deepEqual(w.server.ps, []);
+});
+
+test('no default model: no load button; offline: no button at all', async (t) => {
+  const w = await world(t, { config: { url: '192.0.2.20' } });
+  let data = await content(w, 'fr');
+  assert.deepEqual(
+    data.components.filter((c) => c.type === 'button').map((b) => b.action.key),
+    [ACTIONS.UNLOAD],
+  );
+  assert.equal(
+    data.components.find((c) => c.type === 'status').items[1].label,
+    'Aucun modèle en mémoire',
+  );
+
+  w.server.online = false;
+  await w.hub.refresh();
+  await w.hub.refresh();
+  data = await content(w, 'fr');
+  assert.equal(data.components.filter((c) => c.type === 'button').length, 0);
+  assert.equal(data.components.find((c) => c.type === 'status').items[0].value, 'Injoignable');
+});
+
+test('no address: a single message', async (t) => {
+  const w = await world(t, { config: {} });
+  const data = await content(w, 'de');
+  assert.equal(data.components.length, 1);
+  assert.match(data.components[0].text, /Gib die Adresse/);
+});
+
+test('formatSize', () => {
+  assert.equal(formatSize(365), '365 MB');
+  assert.equal(formatSize(4700), '4.6 GB');
 });

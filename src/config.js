@@ -1,45 +1,101 @@
 // -----------------------------------------------------------------------------
-// Integration configuration.
-//
-// The configuration is filled in by the user in Gladys, from the `config_schema`
-// declared in `gladys-assistant-integration.json`. The SDK fetches it for you
-// (`gladys.getConfig()`) and notifies you of every change through
-// `gladys.onConfigUpdated()`.
-//
-// This module only provides defaults and normalizes the received object, so the
-// rest of the code never has to deal with `undefined`.
+// Integration configuration: defaults (they mirror the `default` values of the
+// manifest `config_schema`, see test/manifest.test.js) and normalization, so
+// the rest of the code never deals with strings, blanks or `undefined`.
 // -----------------------------------------------------------------------------
 
-// Defaults: they MUST stay consistent with the `default` values declared in the
-// `config_schema` of the manifest.
+export const LANGUAGES = ['en', 'fr', 'de', 'es'];
+
+export const DEFAULT_PORT = 11434;
+
+// Refresh intervals offered in the configuration, in seconds.
+export const POLL_INTERVALS = ['30', '60', '120', '300'];
+
+// Longest wait for an answer, in seconds. The scene action is granted 120 s
+// by Gladys (connection wait included): the longest choice leaves a margin.
+export const TIMEOUTS = ['30', '60', '90', '110'];
+
+// How long Ollama keeps a model in memory after a question (`keep_alive`):
+// `default` sends nothing (the server's own setting, 5 minutes unless
+// OLLAMA_KEEP_ALIVE says otherwise), `-1` keeps it until unloaded.
+export const KEEP_ALIVES = ['default', '0', '5m', '30m', '1h', '24h', '-1'];
+
 export const DEFAULT_CONFIG = {
-  latitude: 48.8566, // Paris
-  longitude: 2.3522,
-  unit: 'celsius', // 'celsius' | 'fahrenheit'
-  // Seconds between two reads of the polled sensors. Gladys polls at most once
-  // a minute: slower intervals are applied by skipping polls (see
-  // createPoller in src/devices/index.js).
-  poll_frequency: 300,
-  // Reserved key (NOT in config_schema): because the manifest declares both
-  // 'local' and 'cloud' in its `transports` field, Gladys shows a standard
-  // "Prefer the local connection" toggle and sends the user's choice here.
-  // Read-only for the integration; defaults to true.
-  GLADYS_PREFER_LOCAL: true,
+  url: '',
+  api_key: '',
+  default_model: '',
+  timeout: '60',
+  keep_alive: 'default',
+  poll_interval: '60',
+  language: 'fr',
 };
 
 /**
- * Merge the user config with the defaults.
- * @param {Record<string, unknown>} raw config returned by the SDK
+ * Parse the address typed by the user into a base URL: a bare host or IP
+ * (`192.0.2.10`, port 11434 added), `host:port`, or a full URL (a reverse
+ * proxy: `https://ollama.example.org`, its path kept).
+ * @param {unknown} raw
+ * @returns {string|null} base URL without trailing slash, null when unusable
+ */
+export function parseServerUrl(raw) {
+  if (typeof raw !== 'string') {
+    return null;
+  }
+  const text = raw.trim();
+  if (!text) {
+    return null;
+  }
+  const typedScheme = /^[a-z][a-z0-9+.-]*:\/\//i.test(text);
+  let url;
+  try {
+    url = new URL(typedScheme ? text : `http://${text}`);
+  } catch {
+    return null;
+  }
+  if (!['http:', 'https:'].includes(url.protocol) || !url.hostname) {
+    return null;
+  }
+  // Credentials in the address would end up in the logs and the device params.
+  if (url.username || url.password || url.search || url.hash) {
+    return null;
+  }
+  if (!typedScheme && !url.port) {
+    url.port = String(DEFAULT_PORT);
+  }
+  // `/api` copied from a client configuration is the API root, not a prefix.
+  const path = url.pathname.replace(/\/+$/, '').replace(/\/api$/, '');
+  return `${url.origin}${path}`;
+}
+
+/** Host part shown to the user (no scheme). */
+export const hostOf = (url) => url.replace(/^https?:\/\//, '');
+
+/**
+ * @param {Record<string, unknown>} raw the configuration returned by the SDK
  */
 export function normalizeConfig(raw = {}) {
+  const source = raw && typeof raw === 'object' ? raw : {};
+  const text = (key) => (typeof source[key] === 'string' ? source[key].trim() : '');
+  const pick = (key, list) => {
+    const value = source[key] === undefined || source[key] === null ? '' : String(source[key]);
+    return list.includes(value) ? value : DEFAULT_CONFIG[key];
+  };
+  const typed = text('url');
+  const keepAlive = pick('keep_alive', KEEP_ALIVES);
   return {
-    ...DEFAULT_CONFIG,
-    ...raw,
-    // Force the types: config may arrive as strings from a form.
-    latitude: Number(raw.latitude ?? DEFAULT_CONFIG.latitude),
-    longitude: Number(raw.longitude ?? DEFAULT_CONFIG.longitude),
-    poll_frequency: Number(raw.poll_frequency ?? DEFAULT_CONFIG.poll_frequency),
-    // The preference is a boolean; anything but an explicit false means true.
-    GLADYS_PREFER_LOCAL: raw.GLADYS_PREFER_LOCAL !== false,
+    url: parseServerUrl(typed),
+    urlTyped: typed !== '',
+    apiKey: text('api_key'),
+    defaultModel: text('default_model'),
+    timeoutMs: Number(pick('timeout', TIMEOUTS)) * 1000,
+    // Ollama reads a number as seconds and a string as a duration.
+    keepAlive:
+      keepAlive === 'default'
+        ? undefined
+        : /^-?\d+$/.test(keepAlive)
+          ? Number(keepAlive)
+          : keepAlive,
+    pollIntervalMs: Number(pick('poll_interval', POLL_INTERVALS)) * 1000,
+    language: LANGUAGES.includes(source.language) ? source.language : DEFAULT_CONFIG.language,
   };
 }
