@@ -10,6 +10,8 @@ the notes of the version's GitHub Release.
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-10-19
+
 ### Added
 
 - Scene action _Ask Ollama_: a question with scene variables, an optional
@@ -23,3 +25,6 @@ the notes of the version's GitHub Release.
   model_ and _Free memory_ buttons.
 - _Test the connection_ lists the installed models.
 - English, French, German and Spanish everywhere.
+
+[Unreleased]: https://github.com/guim31/gladys-ollama/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/guim31/gladys-ollama/releases/tag/v1.0.0
