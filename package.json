@@ -1,6 +1,6 @@
 {
   "name": "gladys-ollama",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "private": true,
   "description": "Ollama in Gladys Assistant: ask local language models from a scene, follow the state of the server.",
   "type": "module",
